@@ -604,8 +604,8 @@ class InsertionTest {
         assertEquals(DictationLanguage.Russian, DictationLanguage.automatic(null, listOf("ja", "ru", "en")))
         assertEquals(DictationLanguage.Russian, DictationLanguage.automatic(russian, listOf("en")))
         assertEquals(DictationLanguage.English, DictationLanguage.automatic(Spoken.English, listOf("ru")))
-        assertEquals(null, typingLayout(null, DictationLanguage.Russian))
-        assertEquals(null, typingLayout(russian, DictationLanguage.English))
+        assertEquals(russian, typingLayout(null, DictationLanguage.Russian))
+        assertEquals(russian, typingLayout(russian, DictationLanguage.English))
         assertEquals(Spoken.English, typingLayout(Spoken.English, DictationLanguage.Russian))
     }
     // Batch 3 (Rollover, holds, field kinds). These belong in a KeyboardTouchTest once new test files are agreed.

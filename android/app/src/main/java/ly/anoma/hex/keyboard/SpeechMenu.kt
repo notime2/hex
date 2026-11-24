@@ -8,6 +8,7 @@ import android.widget.TextView
 import ly.anoma.hex.R
 import ly.anoma.hex.label
 import ly.anoma.hex.speech.DictationLanguage
+import ly.anoma.hex.speech.Spoken
 import ly.anoma.hex.speech.Style
 import ly.anoma.hex.useInter
 import kotlin.math.roundToInt
@@ -16,7 +17,8 @@ import kotlin.math.roundToInt
 internal class SpeechMenu(context: Context, private val ime: HexKeyboard,
                           private val title: (String) -> Unit, private val close: () -> Unit) : ScrollView(context) {
     private enum class Page(val title: Int) {
-        Home(R.string.keyboard_menu), Style(R.string.keyboard_menu_style), Language(R.string.keyboard_menu_language),
+        Home(R.string.keyboard_menu), Style(R.string.keyboard_menu_style), Language(R.string.settings_dictation_language),
+        Layout(R.string.settings_keyboard_layout),
         NextDictation(R.string.keyboard_menu_next_dictation), Feedback(R.string.keyboard_menu_feedback),
         Accents(R.string.keyboard_menu_accents),
     }
@@ -30,7 +32,7 @@ internal class SpeechMenu(context: Context, private val ime: HexKeyboard,
     private fun onOff(on: Boolean) = s(if (on) R.string.keyboard_on else R.string.keyboard_off)
     private val chosen get() = s(R.string.keyboard_menu_chosen)
     fun home() = show(Page.Home)
-    fun language() = show(Page.Language)
+    fun layout() = show(Page.Layout)
     fun accents(values: List<String>, pick: (String) -> Unit) {
         page = Page.Accents; title(s(page.title)); body.removeAllViews(); scrollTo(0, 0)
         values.forEach { v -> row(v, "") { pick(v) } }
@@ -46,7 +48,8 @@ internal class SpeechMenu(context: Context, private val ime: HexKeyboard,
         when (next) {
             Page.Home -> {
                 row(s(R.string.keyboard_menu_style), more(s(prefs.style.label))) { show(Page.Style) }
-                row(s(R.string.keyboard_menu_language), more(prefs.language?.label ?: automatic())) { show(Page.Language) }
+                row(s(Page.Layout.title), more(ime.layoutLanguage.label)) { show(Page.Layout) }
+                row(s(Page.Language.title), more(prefs.language?.label ?: automatic())) { show(Page.Language) }
                 if (prefs.translation && prefs.spoken == DictationLanguage.Spanish)
                     row(s(R.string.keyboard_menu_next_dictation),
                         more(s(if (ime.nextEnglish != false) R.string.keyboard_paste_english else R.string.keyboard_paste_spoken))) {
@@ -68,6 +71,13 @@ internal class SpeechMenu(context: Context, private val ime: HexKeyboard,
             Page.Style -> Style.entries.forEach { value -> row(s(value.label), if (prefs.style == value) chosen else "") {
                 prefs.style = value; home()
             } }
+            Page.Layout -> (listOf(null) + Spoken.entries).forEach { value ->
+                row(value?.label ?: s(R.string.settings_layout_automatic_detail),
+                    if (ime.feedback.layout == value) chosen else "") {
+                    ime.feedback.layout = value
+                    close()
+                }
+            }
             Page.Language -> (listOf(null) + DictationLanguage.entries).forEach { value ->
                 row(value?.label ?: automatic(), if (prefs.language == value) chosen else "") {
                     prefs.language = value; ime.nextEnglish = null; close()

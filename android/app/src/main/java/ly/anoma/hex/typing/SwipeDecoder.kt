@@ -614,16 +614,17 @@ internal class SwipeReader(private val spatial: SpatialDecoder) {
     val model get() = spatial.model
     private val decoder = SwipeDecoder(spatial.model)
     private var builtFrom: PersonalWords? = null
+    private var builtVocabulary: List<String> = emptyList()
     private var built = false
 
     /** Swear words as Suggest swear words says, and the extra words again when your own words changed. */
-    fun prepare(swears: Boolean) {
+    fun prepare(swears: Boolean, vocabulary: List<String> = emptyList()) {
         decoder.swears = swears
         val personal = spatial.personal
-        if (built && personal === builtFrom) return
-        built = true; builtFrom = personal
+        if (built && personal === builtFrom && vocabulary == builtVocabulary) return
+        built = true; builtFrom = personal; builtVocabulary = vocabulary
         val words = (if (model.language == "en") contractions.map { SwipeDecoder.ExtraWords.Word(it, SwipeDecoder.costOfContraction(it), true) }
-            else emptyList()) + personal?.words.orEmpty().map { SwipeDecoder.ExtraWords.Word(it, SwipeDecoder.OWN_WORD_COST) }
+            else emptyList()) + (vocabulary + personal?.words.orEmpty()).map { SwipeDecoder.ExtraWords.Word(it, SwipeDecoder.OWN_WORD_COST) }
         decoder.extra = if (words.isEmpty()) null else SwipeDecoder.ExtraWords(model, words)
     }
 

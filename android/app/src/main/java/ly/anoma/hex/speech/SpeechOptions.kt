@@ -8,9 +8,9 @@ import ly.anoma.hex.BuildConfig
 internal enum class Style { Polished, Casual, Notes, Verbatim }
 /** A keyboard layout's language: its keys, accents and optional typing model. Dictation languages are
  * [DictationLanguage]; a language can be dictated without a layout of its own. */
-internal enum class Spoken(val code: String, val label: String, val hasTypingModel: Boolean = true) {
-    English("en", "English"), Spanish("es", "Español"), German("de", "Deutsch"), Norwegian("no", "Norsk"),
-    French("fr", "Français"), Italian("it", "Italiano"), Russian("ru", "Русский", hasTypingModel = false);
+internal enum class Spoken(val code: String, val label: String) {
+    English("en", "English"), Russian("ru", "Русский"), Spanish("es", "Español"), German("de", "Deutsch"),
+    Norwegian("no", "Norsk"), French("fr", "Français"), Italian("it", "Italiano");
 
     // Whisper calls Bokmål "no"; the keyboard and its model use BCP 47 "nb".
     val layoutCode get() = if (this == Norwegian) "nb" else code
@@ -46,9 +46,8 @@ internal enum class DictationLanguage(val code: String, val label: String, val l
     }
 }
 
-/** The layout whose typing model the keyboard reads. A pin takes precedence even if it has no model. */
-internal fun typingLayout(pinned: Spoken?, spoken: DictationLanguage): Spoken? =
-    (pinned ?: spoken.layout)?.takeIf { it.hasTypingModel }
+/** The layout whose model reads the keys and gestures. A pin takes precedence over dictation. */
+internal fun typingLayout(pinned: Spoken?, spoken: DictationLanguage): Spoken? = pinned ?: spoken.layout
 
 internal data class SpeechOptions(val style: Style, val spoken: DictationLanguage, val clean: Boolean, val translate: Boolean,
                                    val lowercase: Boolean = false, val endWithPeriod: Boolean = true,

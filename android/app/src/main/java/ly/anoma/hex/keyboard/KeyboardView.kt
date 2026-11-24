@@ -88,7 +88,7 @@ internal class KeyboardView(context: Context, private val ime: HexKeyboard) : Li
         keys.visibility = GONE; menu.visibility = VISIBLE
         strip.choosing = true; strip.menuOpened(); menu.home(); strip.update()
     }
-    fun openLanguageMenu() { openMenu(); menu.language() }
+    fun openLayoutMenu() { openMenu(); menu.layout() }
     fun openAccents(accents: List<String>, from: View) {
         openMenu(); if (menu.visibility != VISIBLE) return
         heldAt = IntArray(2).also(from::getLocationInWindow).let { intArrayOf(it[0] + from.width / 2, it[1] + from.height / 2) }

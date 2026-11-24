@@ -78,7 +78,11 @@ internal class LetterFeedback(private val host: ViewGroup) {
         for (line in rows.asReversed()) bar.addView(LinearLayout(context).apply {
             for (s in line) addView(TextView(context).apply {
                 text = s; gravity = Gravity.CENTER; setTextColor(context.getColor(R.color.ink))
-                useInter(500); textSize = if (hold) 21f else 27f; includeFontPadding = false
+                val size = if (hold) 21f else 27f
+                val letter = s.singleOrNull()?.takeIf { it.isLetter() }
+                if (letter == null) { useInter(500); textSize = size }
+                else { typeface = resources.getFont(R.font.ibm_plex_mono_medium); textSize = letterSizeSp(letter, size) }
+                includeFontPadding = false
             }, LinearLayout.LayoutParams(cell, -1))
         }, LinearLayout.LayoutParams(-1, rowHeight))
         panel = bar; highlight()

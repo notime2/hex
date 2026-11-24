@@ -131,7 +131,7 @@ internal class KeyPlaneView(context: Context, private val ime: HexKeyboard, priv
         addView(rows, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
         addView(bottom, LayoutParams(LayoutParams.MATCH_PARENT, rowHeight + bottomExtra))
         modeKey = caps.cap(context.getString(R.string.keyboard_numbers_label), context.getString(R.string.keyboard_numbers),
-            modifier, 17f, ime.engine::mode)
+            modifier, 17f, click = ime.engine::mode)
         modeKey.textEntry = false
         // ?123 switches pages as it goes down, as Gboard's; a slide onto a key types it and comes back.
         modeKey.setOnTouchListener { v, e ->
@@ -168,7 +168,7 @@ internal class KeyPlaneView(context: Context, private val ime: HexKeyboard, priv
         }
         spaceKey.sound = AudioManager.FX_KEYPRESS_SPACEBAR
         spaceKey.label?.setTextColor(quiet)
-        spaceKey.setOnLongClickListener { host.openLanguageMenu(); true }
+        spaceKey.setOnLongClickListener { host.openLayoutMenu(); true }
         // A press that leaves the key still types its space on lifting: a quick tap that drifts must
         // never lose it. Only a slide that moved the cursor, or the long press's menu, types none.
         spaceKey.setOnTouchListener { v, e ->
@@ -212,7 +212,7 @@ internal class KeyPlaneView(context: Context, private val ime: HexKeyboard, priv
             default = { if (current?.symbols == false) LetterFeedback.PERIOD_DEFAULT else 0 },
             type = { option -> if (option != null) ime.engine.type(option) else period.performClick() })
         bottomSlides[period] = { ime.engine.type(periodText(current)) }
-        enterKey = caps.cap("", context.getString(R.string.keyboard_return), modifier, 17f, ime.engine::enter)
+        enterKey = caps.cap("", context.getString(R.string.keyboard_return), modifier, 17f, click = ime.engine::enter)
         enterKey.sound = AudioManager.FX_KEYPRESS_RETURN
         enterKey.textEntry = false
         typesOnLift(enterKey, preview = { null }, holds = { emptyList() }, type = { enterKey.performClick() })
@@ -291,7 +291,7 @@ internal class KeyPlaneView(context: Context, private val ime: HexKeyboard, priv
             if (index == 2) {
                 // Gboard labels the page switch =< going out and ?123 coming back.
                 val switch = if (symbols) caps.cap(context.getString(if (page.more) R.string.keyboard_numbers_label else R.string.keyboard_page_symbols),
-                    context.getString(R.string.keyboard_more_symbols), modifier, 15f, ime.engine::shiftUp).also { it.textEntry = false }
+                    context.getString(R.string.keyboard_more_symbols), modifier, 15f, click = ime.engine::shiftUp).also { it.textEntry = false }
                 else caps.icon(shiftIconFor(page), shiftDescription(page), modifier, { ime.engine.shiftDown(); ime.engine.shiftUp() }).also { key ->
                     shiftIcon = key.face.getChildAt(0) as ImageView
                     // Shift acts as it goes down and again as it lifts: a chord types capitals, and a slide
@@ -316,7 +316,7 @@ internal class KeyPlaneView(context: Context, private val ime: HexKeyboard, priv
                 var touch: KeyPoint? = null
                 // The letter as it was when the finger went down, so shift lifting mid-press can't change it.
                 var downText: String? = null
-                val k = caps.cap(cased(c), cased(c)) {
+                val k = caps.cap(cased(c), cased(c), letter = !symbols && c.isLetter()) {
                     val g = if (symbols) null else geometry()
                     val p = touch ?: g?.centres?.get(c)
                     val text = (downText ?: cased(c)).let { if (symbols || touch == null) it else likelier(c, it, touch!!) }
@@ -333,7 +333,7 @@ internal class KeyPlaneView(context: Context, private val ime: HexKeyboard, priv
                 fun holds() = if (symbols) LetterFeedback.symbolHolds(c, currency)
                     else LetterFeedback.holds(cased(c).single(), language.layoutCode, digit, letterHolds,
                         topRow = index == 0, currency = currency)
-                k.hint(if (!symbols && language == Spoken.Russian && c == 'е') "ё" else digit?.toString() ?: symbol?.toString())
+                k.hint(if (!symbols && language == Spoken.Russian && c == 'е') cased('ё') else digit?.toString() ?: symbol?.toString())
                 if (holds().isNotEmpty()) {
                     k.setOnLongClickListener { host.openAccents(holds(), it); true }
                     k.longClickLabel = context.getString(R.string.keyboard_more_characters)
@@ -440,7 +440,7 @@ internal class KeyPlaneView(context: Context, private val ime: HexKeyboard, priv
             PadAction.Delete -> return newDeleteKey()
             PadAction.Space -> caps.icon(R.drawable.ic_space, context.getString(R.string.keyboard_space), fill, { ime.engine.space() })
                 .also { it.sound = AudioManager.FX_KEYPRESS_SPACEBAR }
-            PadAction.Enter -> (page.enter.label?.let { caps.cap(it, it, fill, 17f, ime.engine::enter) }
+            PadAction.Enter -> (page.enter.label?.let { caps.cap(it, it, fill, 17f, click = ime.engine::enter) }
                 ?: caps.icon(actionIcon(page.enter.action), actionLabel(page.enter.action) ?: context.getString(R.string.keyboard_return),
                     fill, ime.engine::enter)).also { it.sound = AudioManager.FX_KEYPRESS_RETURN }
             else -> caps.cap(label, padDescription(key, label), fill, when { key.word != 0 -> 17f; label.length > 1 -> 21f; else -> 26f }) { act(key.action) }
@@ -778,7 +778,9 @@ internal class KeyPlaneView(context: Context, private val ime: HexKeyboard, priv
     }
     /** Whether [word] begins and ends on [letter]'s key ("lol" on l): a word a swipe that comes back to its key can mean. */
     private fun startsAndEnds(word: String, letter: Char): Boolean {
-        fun base(c: Char) = java.text.Normalizer.normalize(c.lowercaseChar().toString(), java.text.Normalizer.Form.NFD).first()
+        fun base(c: Char) = c.lowercaseChar().let { key ->
+            if (key in letters) key else java.text.Normalizer.normalize(key.toString(), java.text.Normalizer.Form.NFD).first()
+        }
         return word.length > 1 && base(word.first()) == letter && base(word.last()) == letter
     }
 
@@ -794,7 +796,16 @@ internal class KeyPlaneView(context: Context, private val ime: HexKeyboard, priv
     })
     /** Shift changed and nothing else: new labels on the same keys. */
     private fun relabel(page: KeyboardPage) {
-        for ((c, key) in caseKeys) { val text = cased(c); key.label?.text = text; key.contentDescription = text }
+        for ((c, key) in caseKeys) {
+            val text = cased(c)
+            if (key.contentDescription == text) continue
+            key.label?.apply {
+                this.text = text
+                if (c.isLetter()) textSize = letterSizeSp(text.single())
+            }
+            key.contentDescription = text
+            if (page.language == Spoken.Russian && c == 'е') key.hint(cased('ё'))
+        }
         shiftIcon?.setImageResource(shiftIconFor(page))
         (shiftIcon?.parent?.parent as? View)?.contentDescription = shiftDescription(page)
     }
@@ -863,11 +874,12 @@ internal class KeyPlaneView(context: Context, private val ime: HexKeyboard, priv
     }
     fun refreshSpace() {
         val next = ime.preferences.options(ime.nextEnglish)
+        val layout = ime.layoutLanguage
+        val showTranslation = next.translate && next.spoken.layout == layout
         spaceKey.contentDescription = context.getString(R.string.keyboard_space)
-        spaceKey.longClickLabel = context.getString(R.string.keyboard_space_language_action,
-            if (next.translate) context.getString(R.string.keyboard_space_translate, next.spoken.label) else next.spoken.label)
-        spaceKey.label?.text = if (next.translate) context.getString(R.string.keyboard_space_translate, next.spoken.label) else next.spoken.label
-        spaceKey.label?.textSize = if (next.translate) 12f else 14f
+        spaceKey.longClickLabel = context.getString(R.string.keyboard_space_language_action, layout.label)
+        spaceKey.label?.text = if (showTranslation) context.getString(R.string.keyboard_space_translate, layout.label) else layout.label
+        spaceKey.label?.textSize = if (showTranslation) 12f else 14f
     }
     fun cancelGestures() {
         cancelSwipe()

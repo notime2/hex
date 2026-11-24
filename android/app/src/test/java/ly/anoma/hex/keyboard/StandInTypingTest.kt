@@ -14,10 +14,10 @@ import ly.anoma.hex.typing.TypingModel
 import ly.anoma.hex.typing.TypingWord
 
 /** English's word list standing in for a dictation language with no model of its own (Português, Nederlands,
- * Polski, Русский): your personal dictionary and its replacements stay, English's words do not. */
+ * Polski), and literal Russian taps alongside the swipe model. */
 class StandInTypingTest {
-    private fun word(standIn: Boolean = false, vocabulary: List<String> = emptyList()): TypingWord {
-        val model = TypingModel.file(File("src/main/assets/typing/en.hextm"), "en")
+    private fun word(standIn: Boolean = false, vocabulary: List<String> = emptyList(), language: String = "en"): TypingWord {
+        val model = TypingModel.file(File("src/main/assets/typing/$language.hextm"), language)
         return TypingWord(SpatialDecoder(model), spatial = true, vocabulary = vocabulary).also {
             it.decoder.personal = PersonalWords(model, listOf("Zorbex"), mapOf("myem" to "my@email.com"))
             it.standIn = standIn
@@ -77,7 +77,7 @@ class StandInTypingTest {
         val cyrillicGrid = KeyGrid(KeyboardLetters.rows("ru").flatMapIndexed { row, letters ->
             letters.mapIndexed { index, letter -> letter to KeyPoint(index * 34.0, row * 56.0) }
         }.toMap(), 34.0, 56.0)
-        val standIn = word(standIn = true)
+        val standIn = word(language = "ru")
         for (letter in "Подъём") {
             if (letter == 'ё') standIn.explicit(letter.toString())
             else {
@@ -92,7 +92,7 @@ class StandInTypingTest {
     }
 
     @Test fun russianPrivateVocabularyCompletesWithoutFixingThePrefix() {
-        val standIn = word(standIn = true, vocabulary = listOf("ЗорбоЛист", "TypoBloom"))
+        val standIn = word(language = "ru", vocabulary = listOf("ЗорбоЛист", "TypoBloom"))
         standIn.explicit("зо")
         assertEquals(listOf(Suggestion("зо", Suggestion.Kind.Typed), Suggestion("ЗорбоЛист", Suggestion.Kind.Word)),
             standIn.strip())
@@ -113,7 +113,7 @@ class StandInTypingTest {
     }
 
     @Test fun ordinaryRussianCompletionsKeepTheCaseThatWasTyped() {
-        val word = word(standIn = true, vocabulary = listOf("берёза"))
+        val word = word(language = "ru", vocabulary = listOf("берёза"))
         for ((prefix, expected) in listOf("бе" to "берёза", "Бе" to "Берёза", "БЕ" to "БЕРЁЗА")) {
             word.restored(prefix, "")
             assertTrue(word.strip().contains(Suggestion(expected, Suggestion.Kind.Word)))

@@ -18,6 +18,10 @@ import ly.anoma.hex.R
 import ly.anoma.hex.useInter
 import kotlin.math.roundToInt
 
+/** Letter legends and their previews use one scale for Latin and Cyrillic. */
+internal fun letterSizeSp(letter: Char, lowercaseSp: Float = 26f) =
+    if (letter.isUpperCase()) lowercaseSp - 2f else lowercaseSp
+
 /** One key. The whole view is its touch target; its padding places the drawn keycap (KeyRowLayout sets it). */
 internal class KeyCap(context: Context, fill: Int, description: String, private val haptics: () -> Boolean,
                       click: () -> Unit) : FrameLayout(context) {
@@ -67,7 +71,8 @@ internal class KeyCap(context: Context, fill: Int, description: String, private 
     fun hint(text: String?) {
         if (text == null) { hint?.visibility = GONE; return }
         val h = hint ?: TextView(context).apply {
-            textSize = 9.5f; useInter(500); includeFontPadding = false; setTextColor(context.getColor(R.color.quiet))
+            textSize = 9.5f; typeface = resources.getFont(R.font.ibm_plex_mono_medium)
+            includeFontPadding = false; setTextColor(context.getColor(R.color.quiet))
             val d = resources.displayMetrics.density
             face.addView(this, LayoutParams(-2, -2, Gravity.TOP or Gravity.END).apply { topMargin = (3 * d).roundToInt(); marginEnd = (4.5f * d).roundToInt() })
         }.also { hint = it }
@@ -103,11 +108,16 @@ internal class KeyCaps(private val context: Context, private val haptics: () -> 
     val key = context.getColor(R.color.key)
     val modifier = context.getColor(R.color.modifier)
 
-    /** Letters are Gboard's size (19.4 dp capitals); labels such as ?123 are smaller. */
-    fun cap(s: String, desc: String, fill: Int = key, sp: Float = 26f, click: () -> Unit): KeyCap {
+    fun cap(s: String, desc: String, fill: Int = key, sp: Float = 26f, letter: Boolean = false, click: () -> Unit): KeyCap {
         val c = KeyCap(context, fill, desc, haptics, click)
         c.label = TextView(context).apply {
-            text = s; textSize = sp; useInter(if (sp >= 20f) 400 else 500)
+            text = s
+            if (letter) {
+                typeface = resources.getFont(R.font.ibm_plex_mono_medium)
+                textSize = letterSizeSp(s.single(), sp)
+            } else {
+                textSize = sp; useInter(if (sp >= 20f) 400 else 500)
+            }
             gravity = Gravity.CENTER; includeFontPadding = false
             maxLines = 1; ellipsize = TextUtils.TruncateAt.END; setTextColor(ink)
             c.face.addView(this, FrameLayout.LayoutParams(-1, -1))

@@ -72,10 +72,12 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean, val
      * predictions lowercase; your own words and shortcuts keep theirs. */
     var addsCapitals = true
     /** English's word list standing in for a language with no typing model of its own
-     * (Português, Nederlands, Polski, Русский): literal typing and personal shortcuts still work,
+     * (Português, Nederlands, Polski): literal typing and personal shortcuts still work,
      * but the model's completions, next words, autocorrection, tap correction and emoji keywords are English's
      * and stay off. */
     var standIn = false
+    /** Russian has a word list for swipes. Individual taps keep their literal spelling. */
+    val literalTaps get() = standIn || model.language == "ru"
     /** Starts a word after `before`. The word a space just finished stays revisable only when
      * `before` is still the text it left; an empty `before` keeps it for the next call. */
     fun reset(before: String = "") {
@@ -97,7 +99,7 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean, val
      * `before` is the text before the cursor; a bare word counts as one just finished. Capitalised
      * as shift would be, by default at a sentence's start. */
     fun predictions(before: String, capitalize: Boolean? = null): List<String> {
-        if (standIn) return emptyList()
+        if (literalTaps) return emptyList()
         val text = if (before.lastOrNull()?.let { it.isLetter() || it == '\'' || it == '\u2019' } == true) "$before " else before
         val words = when {
             startsSentence(text) -> sentenceStarters[model.language]
@@ -184,7 +186,7 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean, val
         val typed = Suggestion(token, Suggestion.Kind.Typed)
         // Your shortcut: what you typed and its phrase, which space puts in whatever autocorrect does.
         decoder.personal?.shortcut(lookup(token))?.let { return listOf(typed, Suggestion(it, Suggestion.Kind.Fix)) }
-        val fix = if (autocorrect && !standIn) replacement() else null
+        val fix = if (autocorrect && !literalTaps) replacement() else null
         val pool = ArrayList<String>(4)
         val lower = lookup(token.lowercase())
         val terms = if (token.length >= 2) vocabulary.asSequence()
@@ -193,7 +195,7 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean, val
             .filter { it != token }
             .take(Suggestion.SLOTS)
             .toList() else emptyList()
-        val showTyped = standIn || fix != null || terms.isNotEmpty() || blocked(token) || knows(lower)
+        val showTyped = literalTaps || fix != null || terms.isNotEmpty() || blocked(token) || knows(lower)
         val size = if (showTyped) 2 else 3
         val lowered = !addsCapitals && token.none { it.isUpperCase() }
         fun add(word: String) {
@@ -207,28 +209,28 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean, val
             if (pool.size == size) break
             if (pool.none { it.equals(term, ignoreCase = true) }) pool.add(term)
         }
-        if (autocorrect && fix == null && !standIn && model.language == "en") suggestOnly[lower]?.let { add(matchCase(token, it)) }
+        if (autocorrect && fix == null && !literalTaps && model.language == "en") suggestOnly[lower]?.let { add(matchCase(token, it)) }
         // An elision typed without its apostrophe ("laltro", "dellanno"): Italian and French write the
         // article against the word, so the strip offers the two joined up, as English's contractions are.
         // A whole-word decoder fix already reads the token ("diro" -> "dirò"), so the elision would only
         // be a second guess at it. A fix that splits the token must be the elision's own two words
         // ("l ho" for "l'ho", "lho"); another reading of the letters ("non c'è" for "nonce", "la e" for
         // "lae") is no elision at all.
-        val elision = if (autocorrect && !standIn && '\'' !in lower) elided(lower) else null
+        val elision = if (autocorrect && !literalTaps && '\'' !in lower) elided(lower) else null
         if (elision != null && (fix == null || fix.equals(elision.replace('\'', ' '), ignoreCase = true)))
             add(matchCase(token, elision))
         // Your own word, completed once two letters match, before the dictionary's: a word you added is
         // likelier what you mean than a reading's runner-up ("zor" offers "Zorbex" beside the fix "or").
         if (token.length >= 2) decoder.personal?.completions(lookup(token))?.firstOrNull()?.let { add(yours(it)) }
-        val short = if (!standIn && token.length <= 3) model.completionsAfter(lower, previous, suggestSwearWords).map { shown(model.text(it)) } else emptyList()
+        val short = if (!literalTaps && token.length <= 3) model.completionsAfter(lower, previous, suggestSwearWords).map { shown(model.text(it)) } else emptyList()
         if (fix == null) short.firstOrNull { s -> pool.none { it.equals(s, ignoreCase = true) } }?.let(::add)
-        val readings = autocorrect && !standIn && spatial && token.length >= 2 && !protected()
+        val readings = autocorrect && !literalTaps && spatial && token.length >= 2 && !protected()
         fun reading(text: String) = if (decoder.personal?.owns(text) == true) yours(text) else shown(text)
         if (readings && token.length >= 3) for (r in decision().readings) add(reading(r.text))
         for (s in short) add(s)
         // Your own words before the rest of the dictionary's (iOS lists UILexicon terms with them).
         decoder.personal?.completions(lookup(token))?.forEach { add(yours(it)) }
-        if (!standIn) for (w in model.completions(lower, suggestSwearWords, previous)) add(shown(model.text(w)))
+        if (!literalTaps) for (w in model.completions(lower, suggestSwearWords, previous)) add(shown(model.text(w)))
         if (readings && token.length < 3) for (r in decision().readings) add(reading(r.text))
         if (pool.isEmpty()) return listOf(typed)
         val first = if (fix != null) Suggestion(fix, Suggestion.Kind.Fix) else Suggestion(pool[0], Suggestion.Kind.Word)
@@ -240,7 +242,7 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean, val
     private fun shown(word: String) = matchCase(token, if (token.firstOrNull()?.isUpperCase() == true) word else displayed(word))
     fun letter(text: String, x: Double, y: Double, grid: KeyGrid) {
         token += text; decision = null
-        if (spatial && !standIn && !literalOnly && taps.size < MAX_LENGTH) taps.add(decoder.score(grid, x, y))
+        if (spatial && !literalTaps && !literalOnly && taps.size < MAX_LENGTH) taps.add(decoder.score(grid, x, y))
     }
     fun explicit(text: String) {
         token += text; taps.clear(); decision = null; literalOnly = true
@@ -262,7 +264,7 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean, val
      * so a letter without a key of its own counts as its base letter's (é as e). Only while
      * autocorrect is on in a word field, never with caps lock; the keyboard decides that. */
     fun likelierKey(before: String, hit: Char, near: Map<Char, Double>, keys: Collection<Char>): Char {
-        if (standIn || near.isEmpty()) return hit
+        if (literalTaps || near.isEmpty()) return hit
         val token = currentToken(before)
         if (token == null && before.lastOrNull()?.let { it.isLetterOrDigit() || it == '\'' || it == '\u2019' } == true) return hit
         val continuations = model.continuations(lookup((token ?: "").lowercase())) ?: return hit
@@ -321,7 +323,7 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean, val
     private fun withCapitals(): String? {
         // A stand-in changes nothing on space or a mark: English's fixes and your own spellings alike wait
         // for a layout or a language with a model. Your shortcuts go in through textReplacement before it.
-        if (standIn || token.isEmpty() || vocabulary.any { it.equals(token, ignoreCase = true) }) return null
+        if (literalTaps || token.isEmpty() || vocabulary.any { it.equals(token, ignoreCase = true) }) return null
         val personal = decoder.personal
         personal?.shortcut(lookup(token))?.let { return it }
         // Your own word: never corrected into another, and spelled your way ("github" -> "GitHub").
@@ -356,6 +358,7 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean, val
      * gives them), your own words keep your spelling unless that is an ordinary word with a stray capital ("Will").
      * With Auto-capitalisation off, no capital you didn't type, your own spellings aside. */
     fun swiped(reading: String, previous: String?): String {
+        vocabulary.firstOrNull { it.equals(reading, ignoreCase = true) }?.let { return it }
         val own = decoder.personal?.owns(reading) == true
         if (!addsCapitals) return if (own) reading else reading.lowercase()
         if (own) return if (reading.drop(1).none { it.isUpperCase() } && ordinary(reading)) reading.lowercase() else reading
@@ -395,7 +398,7 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean, val
                commit: (String) -> String = { it }): Correction? {
         val word = finished
         finished = null; pending = null
-        if (standIn || token.isEmpty() || vocabulary.any { it.equals(token, ignoreCase = true) } ||
+        if (literalTaps || token.isEmpty() || vocabulary.any { it.equals(token, ignoreCase = true) } ||
             (ending == '.' && token.lowercase() in abbreviations)) return null
         var result: Correction? = null
         if (word?.taps != null && word.space != null && spatial && !literalOnly && taps.size == token.length &&
@@ -454,7 +457,7 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean, val
         pending = Finished(text, if (sameLetters) token else text, wordTaps, spaceTap, reach, after)
     }
     fun suggestions(): List<String> {
-        if (standIn || token.length !in 1..MAX_LENGTH) return emptyList()
+        if (literalTaps || token.length !in 1..MAX_LENGTH) return emptyList()
         val options = LinkedHashMap<String, Int>()
         for (w in model.completions(lookup(token.lowercase()), suggestSwearWords, previous)) options[model.text(w)] = model.frequencyCost(w)
         if (spatial && options.size < 3 && token.length >= 2 && !protected()) for (r in decision().readings)

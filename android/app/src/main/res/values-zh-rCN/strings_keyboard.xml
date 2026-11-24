@@ -21,7 +21,7 @@
     <string name="keyboard_caps_lock_on">已启用大写锁定</string>
     <string name="keyboard_more_characters">显示更多字符</string>
     <string name="keyboard_type_held">输入 %1$s</string>
-    <string name="keyboard_space_language_action">听写语言，%1$s</string>
+    <string name="keyboard_space_language_action">切换键盘布局，%1$s</string>
     <string name="keyboard_transcribing">正在转录</string>
     <string name="keyboard_recording">正在录音</string>
     <string name="keyboard_keep">保留 %1$s</string>
@@ -62,7 +62,6 @@
     <string name="keyboard_action_search">搜索</string>
     <string name="keyboard_action_send">发送</string>
     <string name="keyboard_menu_style">风格</string>
-    <string name="keyboard_menu_language">语言</string>
     <string name="keyboard_menu_next_dictation">下次听写</string>
     <string name="keyboard_menu_feedback">打字反馈</string>
     <string name="keyboard_menu_accents">更多字符</string>

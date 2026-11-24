@@ -674,6 +674,18 @@ class NeverSuggestTest {
         return ranked(decode(xs, ys, ts, xs.size, grid, previous, 4).candidates)
     }
 
+    @Test fun russianSwipesUseTheCyrillicKeysAndLocalVocabulary() {
+        val reader = swipeReader("ru")
+        val grid = swipeGrid("ru")
+        for (word in listOf("привет", "спасибо", "завтра", "работает", "клавиатура", "ещё", "йод")) {
+            assertEquals(word, word, reader.read(word, grid).firstOrNull())
+        }
+        reader.prepare(false, listOf("ЗорбоЛист"))
+        assertEquals("ЗорбоЛист", reader.read("зорболист", grid).firstOrNull())
+        reader.prepare(false)
+        assertFalse("ЗорбоЛист" in reader.read("зорболист", grid))
+    }
+
     @Test fun cleanSwipesReadAsTheirWordsInEveryLayout() {
         val en = swipeReader("en"); val g = swipeGrid("en")
         for (w in listOf("hello", "the", "keyboard", "world", "typing", "people", "because", "quick", "with", "you", "and"))

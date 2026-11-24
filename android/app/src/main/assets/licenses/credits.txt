@@ -9,6 +9,9 @@ The keyboard's emoji suggestions: Unicode emoji-test.txt 18.0 and CLDR 49 names 
 keywords, Unicode License v3. Full licence: unicode.txt.
 Inter by Rasmus Andersson and the Inter Project Authors. SIL Open Font License 1.1.
 Unmodified InterVariable.ttf from https://github.com/rsms/inter/releases/tag/v4.1
+IBM Plex Mono Medium by IBM Corp., Copyright 2017 IBM Corp. SIL Open Font License 1.1.
+Unmodified IBMPlexMono-Medium.ttf for the letter keys and previews. Licence: ibm-plex-mono-ofl.txt.
+https://github.com/google/fonts/tree/633f3200539c52ee0aba2dfd7f46921417a81877/ofl/ibmplexmono
 
 Keyboard suggestion filter: List of Dirty, Naughty, Obscene, and Otherwise Bad Words
 (LDNOOBW), © 2012–2020 Shutterstock, Inc., and contributors. English, Spanish, German,
@@ -52,3 +55,10 @@ Changes: normalized and lowercased word forms, filtered the book counts to attes
 Bokmål spellings, selected informative pairs and quantized probabilities into HXTM v3.
 The Bokmål validity list (nb.valid) is the Norsk ordbank standard full forms outside the model
 that the same book counts use at least 1,000 times, with each word's count quantized to a cost.
+
+Russian swipe dictionary (ru.hextm and ru.capitals)
+Copyright (c) 2008, The Android Open Source Project. Apache License 2.0 (apache-2.0.txt).
+Source: AOSP LatinIME Russian word list v54, Android 14.0.0 r1.
+https://android.googlesource.com/platform/packages/inputmethods/LatinIME/+/refs/tags/android-14.0.0_r1/dictionaries/ru_wordlist.combined.gz
+Hex filtered and lowercased the word forms, converted their frequency scores to HXTM v3
+and recorded capitalized spellings. The converted files contain no source sentences.

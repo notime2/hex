@@ -27,7 +27,7 @@
     <string name="keyboard_caps_lock_on">Caps lock enabled</string>
     <string name="keyboard_more_characters">Show more characters</string>
     <string name="keyboard_type_held">Type %1$s</string>
-    <string name="keyboard_space_language_action">Dictation language, %1$s</string>
+    <string name="keyboard_space_language_action">Change keyboard layout, %1$s</string>
     <string name="keyboard_transcribing">Transcribing</string>
     <string name="keyboard_recording">Recording</string>
     <string name="keyboard_literal" translatable="false">“%1$s”</string>
@@ -77,7 +77,6 @@
     <string name="keyboard_action_search">Search</string>
     <string name="keyboard_action_send">Send</string>
     <string name="keyboard_menu_style">Style</string>
-    <string name="keyboard_menu_language">Language</string>
     <string name="keyboard_menu_next_dictation">Next dictation</string>
     <string name="keyboard_menu_feedback">Typing feedback</string>
     <string name="keyboard_menu_accents">More characters</string>

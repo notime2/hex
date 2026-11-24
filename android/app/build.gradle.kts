@@ -79,7 +79,7 @@ val requirePreviewKey by tasks.registering {
 val previewBuild = providers.gradleProperty("hexPreviewBuild").orNull?.toInt() ?: 1
 val previewChannel = providers.gradleProperty("hexPreviewChannel").orNull
     ?: "https://raw.githubusercontent.com/anomalyco/hex/android-preview/latest.json"
-val personalBuild = providers.gradleProperty("hexPersonalBuild").orNull?.toInt() ?: 2412
+val personalBuild = providers.gradleProperty("hexPersonalBuild").orNull?.toInt() ?: 2413
 val personalProperties = File(System.getProperty("user.home"), ".config/hex-android-ru/keystore.properties")
 abstract class PreparePersonalVocabulary : DefaultTask() {
     @get:InputFiles
@@ -229,13 +229,18 @@ tasks.matching { it.name in setOf("packageRelease", "packageReleaseBundle", "sig
     .configureEach { dependsOn(requireUploadKey) }
 tasks.matching { it.name in setOf("packagePreview", "assemblePreview") }.configureEach { dependsOn(requirePreviewKey) }
 tasks.matching { it.name in setOf("packagePersonal", "assemblePersonal") }.configureEach { dependsOn(requirePersonalKey) }
-// Unmodified InterVariable.ttf from rsms/inter v4.1, stored locally for offline builds.
+// Keep the original verification task name for callers. Both fonts ship offline.
 val verifyInter by tasks.registering {
-    val font = file("src/main/res/font/inter_variable.ttf")
-    inputs.file(font)
+    val fonts = mapOf(
+        file("src/main/res/font/inter_variable.ttf") to "4989b125924991b90d05b2d16e0e388c48f7d5bb8b30539bbf9c755278d0ccaf",
+        file("src/main/res/font/ibm_plex_mono_medium.ttf") to "a9b4c49bb299e05b5f6c481e7fb5e78943d2793249a0c8874ab574a2d1ea6755",
+    )
+    inputs.files(fonts.keys)
     doLast {
-        check(MessageDigest.getInstance("SHA-256").digest(font.readBytes()).joinToString("") { "%02x".format(it) }
-            == "4989b125924991b90d05b2d16e0e388c48f7d5bb8b30539bbf9c755278d0ccaf") { "Inter v4.1 checksum mismatch" }
+        for ((font, expected) in fonts) {
+            val digest = MessageDigest.getInstance("SHA-256").digest(font.readBytes()).joinToString("") { "%02x".format(it) }
+            check(digest == expected) { "Font checksum mismatch for ${font.name}" }
+        }
     }
 }
 // Pin the licensed HXTM files. An older prototype word-pair list cannot slip into an APK.
@@ -243,7 +248,7 @@ val verifyTypingModels by tasks.registering {
     val dir = file("src/main/assets/typing")
     val names = listOf("en.hextm", "es.hextm", "de.hextm", "nb.hextm", "fr.hextm", "it.hextm", "en.valid",
         "es.valid", "de.valid", "nb.valid", "fr.valid", "it.valid",
-        "en.capitals", "es.capitals", "de.capitals", "fr.capitals", "it.capitals")
+        "en.capitals", "es.capitals", "de.capitals", "fr.capitals", "it.capitals", "ru.hextm", "ru.capitals")
     val manifest = dir.resolve("SHA256SUMS")
     inputs.files(names.map(dir::resolve) + manifest)
     doLast {

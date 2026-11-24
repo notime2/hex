@@ -3180,7 +3180,7 @@ iOS prototype (`HEXMobile`) -> Record/transcribe/copy and keyboard handoff
 │   Apple documents them only for DictationTranscriber, and Parakeet's batch
 │   path receives none
 └── Proof limits: unit tests only; no CI compiles the iOS targets
-Android keyboard -> six typing models and a Russian ЙЦУКЕН layout
+Android keyboard -> six typing models and a Russian ЙЦУКЕН layout with offline swipe typing
 ├── Hands-free dictation keeps the screen on -> the keyboard's window and Home's add Android's
 │   `FLAG_KEEP_SCREEN_ON` (no permission) while a dictation is opening, listening or transcribing,
 │   and clear it once idle, so the display timing out can't hide the IME, whose leave cancels the
@@ -3212,13 +3212,16 @@ Android keyboard -> six typing models and a Russian ЙЦУКЕН layout
 │   tried on a device.
 ├── Keyboard > Keyboard layout > Русский -> ЙЦУКЕН, including ъ and ь, with ё/Ё on a held
 │   е/Е. When the layout follows dictation, choosing Русский or resolving Automatic to
-│   Russian also shows these keys. A pin takes precedence over the spoken language. The
-│   Russian layout keeps typed text and the literal chip. Built-in word completions,
-│   next words, autocorrection and swipe typing are off. Pin English to use its
-│   typing model with spoken Russian. Checks: KeyboardPageTest, InsertionTest and
-│   StandInTypingTest (rows, letter holds, language resolution and literal Cyrillic typing).
-│   On a disposable ARM64 Android 16 emulator, the IME entered "Съешь ещё. ЁЖ" into a
-│   separate editor. English keys and suggestions remained available when pinned during Russian dictation.
+│   Russian also shows these keys. Holding space opens Keyboard layout. Picking English or
+│   Русский updates the keys and space label, including when another layout was pinned.
+│   An explicit dictation language is selected independently under Hex menu > Dictation language.
+│   Russian swipes use the bundled AOSP word list and single-word personal vocabulary.
+│   The normal swipe setting and field restrictions apply. Individual Russian taps stay literal.
+│   Checks: KeyboardPageTest, InsertionTest, StandInTypingTest and NeverSuggestTest.
+│   On an ARM64 Android 16 emulator, upgrading 2412 with Russian pinned kept the selection.
+│   The space menu switched RU/EN in the same editor. With airplane mode on, continuous
+│   gestures entered "Hello", "Привет мир спасибо" and "Ещё". Both alphabets use IBM Plex
+│   Mono Medium on the keys (26 sp lowercase, 24 sp uppercase), including after Shift and Caps Lock.
 ├── Hex RU personal APK with a private vocabulary file -> the saved terms default to on under
 │   Dictation > Custom vocabulary. Edits or an explicit off setting take precedence over defaults.
 │   After two typed letters, the English and Russian strips offer matching terms for tap insertion.

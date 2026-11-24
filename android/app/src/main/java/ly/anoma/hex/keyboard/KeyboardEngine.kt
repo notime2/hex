@@ -297,7 +297,7 @@ internal class KeyboardEngine(
         // Keep literal words and personal shortcuts in the stand-in without opening an asset for the layout.
         val language = typing ?: Spoken.English.layoutCode
         val standIn = typing == null
-        val terms = if (wordField && (typing == "en" || layoutLanguage() == Spoken.Russian)) vocabulary() else emptyList()
+        val terms = if (wordField && (typing == "en" || typing == "ru")) vocabulary() else emptyList()
         val active = word
         if (wordField && keepWord && active != null && active.standIn == standIn && active.decoder.model.language == language &&
             active.spatial == feedback.spatial && active.vocabulary == terms &&
@@ -328,7 +328,7 @@ internal class KeyboardEngine(
             surface?.suggestions(Suggestion.withEmoji(w.strip(autocorrect = false).map(::shown), emojiFor(w)))
             // A stand-in's strip already is the finished one: nothing there changes after the pause.
             // A field that asked for no suggestions of its own gets no fix: space leaves its words alone.
-            if (!feedback.autocorrect || !correctingField || w.standIn || !canEndWord()) return
+            if (!feedback.autocorrect || !correctingField || w.literalTaps || !canEndWord()) return
             val token = w.token
             pendingChip = Runnable {
                 pendingChip = null
@@ -346,7 +346,7 @@ internal class KeyboardEngine(
      * one. The bundled list is read off the main thread the first time; once it is in memory this
      * word's strip is shown again. */
     private fun emojiFor(w: TypingWord): String? {
-        if (w.standIn || !feedback.emojiSuggestions) return null
+        if (w.literalTaps || !feedback.emojiSuggestions) return null
         val list = emoji ?: return null
         val hit = list.match(w.token, w.decoder.model.language)
         if (hit == null && !list.requested) list.load {
@@ -389,7 +389,7 @@ internal class KeyboardEngine(
      * while autocorrect is on in a word field on the letters page, never in a URL field, and never with caps lock. */
     fun likelierLetter(hit: Char, near: Map<Char, Double>, keys: Collection<Char>): Char {
         val w = word ?: return hit
-        if (w.standIn || exactField || near.isEmpty() || symbols || shift.locked || !feedback.autocorrect || !target.connected) return hit
+        if (w.literalTaps || exactField || near.isEmpty() || symbols || shift.locked || !feedback.autocorrect || !target.connected) return hit
         return w.likelierKey(before(), hit, near, keys)
     }
     /** Shift as the keys show it: letters type capitals while it is on or held. */
@@ -736,7 +736,7 @@ internal class KeyboardEngine(
         // A word delete took back stays remembered for this swipe; anything else ends the Undo dictation offer.
         if (dictated != null) offerUndo(null)
         continuation.clear(); cancelChip(); forgetSwipe()
-        val reader = w.decoder.swipe.also { it.prepare(feedback.suggestSwearWords) }
+        val reader = w.decoder.swipe.also { it.prepare(feedback.suggestSwearWords, w.vocabulary) }
         swiping = true
         surface?.suggestions(emptyList())
         val b = before()

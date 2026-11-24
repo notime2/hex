@@ -1,0 +1,11 @@
+<resources>
+    <string name="setup_welcome_detail">Hex RU 使用网络下载语音模型。你的声音和文字都保留在这台设备上。</string>
+    <string name="setup_title">设置 Hex RU</string>
+    <string name="setup_detail">允许使用麦克风，然后选择 Hex RU 作为键盘。</string>
+    <string name="setup_microphone_detail">让 Hex RU 能听见你</string>
+    <string name="setup_keyboard">Hex RU 键盘</string>
+    <string name="setup_keyboard_enabled">在列表中选择 Hex RU</string>
+    <string name="setup_keyboard_off">在“设置”中打开 Hex RU</string>
+    <string name="setup_choose_hex">选择 Hex RU 键盘</string>
+    <string name="settings_privacy_detail">Hex RU 在这台手机上将语音转换为文字。它不保存按键记录或转录内容，也不上传你的声音或输入的文字。应用连接网络以下载语音模型。</string>
+</resources>

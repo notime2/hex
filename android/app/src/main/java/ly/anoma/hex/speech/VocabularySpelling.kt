@@ -26,6 +26,8 @@ internal object VocabularySpelling {
      * judged the same way in settings, the editor and dictation. */
     fun normalizedKey(term: String) = normalize(term)
 
+    fun isLowercaseRussianWord(term: String) = term.isNotEmpty() && term.all { it in 'а'..'я' || it == 'ё' }
+
     /** Trims each term and drops blanks, terms over 64 characters, terms whose key is shorter
      * than two characters, duplicate keys, and anything past the 100-term limit. */
     fun sanitize(rawTerms: List<String>): List<String> {

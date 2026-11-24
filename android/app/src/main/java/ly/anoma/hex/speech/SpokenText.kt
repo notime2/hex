@@ -9,7 +9,7 @@ internal object SpokenText {
      * Translation already happened in Whisper, so a translated dictation is English. */
     fun format(raw: String, options: SpeechOptions): String {
         val language = if (options.translate) "en" else options.spoken.code
-        val spelled = VocabularySpelling.apply(options.vocabulary, raw)
+        val spelled = VocabularySpelling.apply(options.exactSpellings, raw)
         if (options.style == Style.Verbatim || raw.isBlank()) return finished(style(spelled, options.style, language), options)
         val spoken = SpokenCleanup.counts(SpokenCleanup.symbols(spelled.trim(), language), language)
         val cleaned = if (options.clean) SpokenCleanup.clean(spoken, language) else spoken
@@ -19,7 +19,7 @@ internal object SpokenText {
     }
 
     private fun finished(styled: String, options: SpeechOptions): String {
-        val text = VocabularySpelling.apply(options.vocabulary, styled)
+        val text = VocabularySpelling.apply(options.exactSpellings, styled)
         return if (options.lowercase) text.lowercase(Locale.ROOT) else text
     }
 

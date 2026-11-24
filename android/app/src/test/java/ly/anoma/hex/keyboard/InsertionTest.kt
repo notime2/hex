@@ -384,6 +384,17 @@ class InsertionTest {
         assertEquals("Ask about open code.", spelled("ask about open code", Style.Polished, terms = emptyList()))
     }
 
+    @Test fun commonRussianVocabularyHintsKeepSentenceCaseAndCustomNames() {
+        val terms = listOf("берёза", "БрусноГрад")
+        val opts = SpeechOptions(Style.Polished, DictationLanguage.Russian, false, false,
+            vocabulary = terms, bundledVocabulary = terms)
+        assertEquals(terms, opts.vocabulary)
+        assertEquals("Берёза и БрусноГрад.", SpokenText.format("берёза и брусноград", opts))
+        assertEquals("БЕРЁЗА", SpokenText.format("БЕРЁЗА", opts.copy(style = Style.Verbatim)))
+        assertEquals(listOf("БерЁза"), opts.copy(vocabulary = listOf("БерЁза")).exactSpellings)
+        assertEquals(terms, opts.copy(bundledVocabulary = emptyList()).exactSpellings)
+    }
+
     // iOS FrenchSpacingTests (French isn't a dictation language on Android yet; this is ready for it).
     @Test fun frenchSpacing() {
         val thin = "\u202F"; val nbsp = "\u00A0"
@@ -560,7 +571,6 @@ class InsertionTest {
         assertEquals(DictationLanguage.Russian, DictationLanguage.automatic(null, listOf("ru")))
         assertEquals(DictationLanguage.Russian, DictationLanguage.matching("ru"))
         assertEquals(null, DictationLanguage.Polish.layout)
-        assertEquals(null, DictationLanguage.Russian.layout)
         fun format(text: String, style: Style, language: DictationLanguage) = SpokenText.format(text, SpeechOptions(style, language,
             clean = true, translate = false, formatLists = true, spokenPunctuation = true))
         // Cleanup has no Polish rules, so the particle "no" ("well") is not English's correction marker.
@@ -580,12 +590,23 @@ class InsertionTest {
         assertEquals(null, typingLayout(null, DictationLanguage.Portuguese))
         assertEquals(null, typingLayout(null, DictationLanguage.Dutch))
         assertEquals(null, typingLayout(null, DictationLanguage.Polish))
-        assertEquals(null, typingLayout(null, DictationLanguage.Russian))
         // A pinned Keyboard › Keyboard layout has its own model whatever is dictated.
         assertEquals(Spoken.English, typingLayout(Spoken.English, DictationLanguage.Portuguese))
         assertEquals(Spoken.English, typingLayout(Spoken.English, DictationLanguage.Dutch))
         assertEquals(Spoken.Spanish, typingLayout(null, DictationLanguage.Spanish))
         assertEquals(Spoken.French, typingLayout(Spoken.French, DictationLanguage.Spanish))
+    }
+
+    @Test fun russianLayoutFollowsDictationAndRespectsExplicitPins() {
+        val russian = Spoken.Russian
+        assertEquals(russian, Spoken.matching("ru"))
+        assertEquals(russian, DictationLanguage.Russian.layout)
+        assertEquals(DictationLanguage.Russian, DictationLanguage.automatic(null, listOf("ja", "ru", "en")))
+        assertEquals(DictationLanguage.Russian, DictationLanguage.automatic(russian, listOf("en")))
+        assertEquals(DictationLanguage.English, DictationLanguage.automatic(Spoken.English, listOf("ru")))
+        assertEquals(null, typingLayout(null, DictationLanguage.Russian))
+        assertEquals(null, typingLayout(russian, DictationLanguage.English))
+        assertEquals(Spoken.English, typingLayout(Spoken.English, DictationLanguage.Russian))
     }
     // Batch 3 (Rollover, holds, field kinds). These belong in a KeyboardTouchTest once new test files are agreed.
     @Test fun overlappingKeysTypeInTheOrderTheyWentDown() {

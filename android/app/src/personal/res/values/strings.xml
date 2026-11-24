@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name" translatable="false">Hex RU</string>
+    <string name="setup_welcome_detail">Hex RU uses the internet to download its speech models. Your voice and words stay on this device.</string>
+    <string name="setup_title">Set up Hex RU</string>
+    <string name="setup_detail">Allow the microphone, then choose Hex RU as your keyboard.</string>
+    <string name="setup_microphone_detail">So Hex RU can hear you</string>
+    <string name="setup_keyboard">Hex RU keyboard</string>
+    <string name="setup_keyboard_enabled">Choose Hex RU in the list</string>
+    <string name="setup_keyboard_off">Turn on Hex RU in Settings</string>
+    <string name="setup_choose_hex">Choose Hex RU keyboard</string>
+    <string name="settings_privacy_detail">Hex RU turns speech into text on this phone. It keeps no keystrokes or transcripts and never uploads your voice or what you type. The app connects to the internet to download speech models.</string>
+</resources>

@@ -66,8 +66,7 @@ internal class KeyboardEngine(
     private val target: KeyboardTextTarget,
     private val feedback: TypingPreferences,
     private val layoutLanguage: () -> Spoken,
-    /** The typing model's language, or null when the keys are only English's stand-in for a dictation language
-     * with no layout: they keep English's keys and accents, but must not suggest or correct English words. */
+    /** The typing model's language, or null when there is no model for the chosen layout. */
     private val typingLanguage: () -> String?,
     private val loadDecoder: (String) -> SpatialDecoder,
     /** Reads Android's personal dictionary for a model; runs on [background]. */
@@ -75,6 +74,7 @@ internal class KeyboardEngine(
     private val background: Executor = Executor { it.run() },
     /** The bundled emoji words (Labs › Keyboard › Emoji suggestions), read lazily. */
     private val emoji: EmojiWords? = null,
+    private val vocabulary: () -> List<String> = { emptyList() },
     private val clock: () -> Long = { SystemClock.uptimeMillis() },
     private val main: Handler = Handler(Looper.getMainLooper()),
 ) {
@@ -294,20 +294,21 @@ internal class KeyboardEngine(
     private fun cancelChip() { pendingChip?.let(main::removeCallbacks); pendingChip = null }
     fun configureTyping(keepWord: Boolean = false) {
         val typing = typingLanguage()
-        // No model of its own: English's word list still gives the keys their geometry and your personal
-        // dictionary, marked as a stand-in so none of English's words reach the strip or autocorrect.
-        val language = typing ?: layoutLanguage().layoutCode
+        // Keep literal words and personal shortcuts in the stand-in without opening an asset for the layout.
+        val language = typing ?: Spoken.English.layoutCode
         val standIn = typing == null
+        val terms = if (wordField && (typing == "en" || layoutLanguage() == Spoken.Russian)) vocabulary() else emptyList()
         val active = word
         if (wordField && keepWord && active != null && active.standIn == standIn && active.decoder.model.language == language &&
-            active.spatial == feedback.spatial && active.token.isNotEmpty() && endsWith(prefix + active.token)) {
+            active.spatial == feedback.spatial && active.vocabulary == terms &&
+            active.token.isNotEmpty() && endsWith(prefix + active.token)) {
             active.addsCapitals = feedback.autoCapitalize
             showPlane(); showSuggestions(active); return
         }
         resetTyping()
         word = if (wordField) {
             try {
-                TypingWord(models.getOrPut(language) { loadDecoder(language).also(::loadPersonal) }, feedback.spatial)
+                TypingWord(models.getOrPut(language) { loadDecoder(language).also(::loadPersonal) }, feedback.spatial, terms)
                     .also {
                         it.standIn = standIn
                         it.suggestSwearWords = feedback.suggestSwearWords

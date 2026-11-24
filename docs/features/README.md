@@ -3180,7 +3180,7 @@ iOS prototype (`HEXMobile`) -> Record/transcribe/copy and keyboard handoff
 │   Apple documents them only for DictationTranscriber, and Parakeet's batch
 │   path receives none
 └── Proof limits: unit tests only; no CI compiles the iOS targets
-Android keyboard -> English, Spanish, German, Bokmål, French and Italian typing assistance
+Android keyboard -> six typing models and a Russian ЙЦУКЕН layout
 ├── Hands-free dictation keeps the screen on -> the keyboard's window and Home's add Android's
 │   `FLAG_KEEP_SCREEN_ON` (no permission) while a dictation is opening, listening or transcribing,
 │   and clear it once idle, so the display timing out can't hide the IME, whose leave cancels the
@@ -3191,18 +3191,18 @@ Android keyboard -> English, Spanish, German, Bokmål, French and Italian typing
 ├── Symbol pages -> Gboard's ?123 and =< pages (Pixel 8 emulator, API 36), the same on every
 │   layout: ?123 draws 1–0, then @ # $ _ & - + ( ) /, then * " ' : ; ! ? between the page switch
 │   and delete, and =< draws ~ ` | • √ π ÷ × § Δ, then £ ¢ € ¥ ^ ° = { } \, then % © ® ™ ✓ [ ]
-│   the same way, so ` types again, and #, _, +, *, = and every other printable ASCII character
-│   types from the letters, one of the two pages, or a hold. The bottom row is ABC , 1234 space .
+│   the same way. ASCII punctuation and digits type from the letters, symbol pages or a hold.
+│   The bottom row is ABC , 1234 space .
 │   enter under ?123 and Gboard's ABC < 1234 space > enter under =<, whose own rows have no < or >;
 │   a held < or > keeps the marks it had there. Spanish's ¿ and ¡ are the holds on ? and ! (the
 │   rows have no keys of their own for them). Checks: `SymbolPagesTest` in android/app/src/test
-│   (both pages' keys, every printable ASCII character for each layout and local currency, no key
+│   (both pages' keys, printable ASCII symbols and digits for each layout and local currency, no key
 │   drawn twice on a page) and `./gradlew :app:testDebugUnitTest :app:compileDebugKotlin` passed
 │   175 tests on 2026-11-24 on OpenJDK 21 and Android SDK 36 (offline, `-x prepareSpeechModel`);
 │   the repo has no Android CI, and nothing was tried on a device or emulator.
-├── Português, Nederlands, Polski or Русский with no pinned layout -> English's keys and
-│   accents (DictationLanguage.layout is null), with English's word list only standing in for
-│   the keys' geometry: the strip keeps what was typed and your own dictionary words as
+├── Português, Nederlands or Polski with no pinned layout -> English's keys and accents
+│   (DictationLanguage.layout is null), with English's word list as a typing fallback.
+│   The strip keeps what was typed and your own dictionary words as
 │   completions, and text shortcuts, double-space period, capitals and the literal chip stay.
 │   No English completions, next words, autocorrection, tap correction, swipe typing or emoji
 │   keywords. A layout pinned in Keyboard > Keyboard layout brings that layout's model.
@@ -3210,6 +3210,22 @@ Android keyboard -> English, Spanish, German, Bokmål, French and Italian typing
 │   `standInOffersYourWordsAndShortcutsButNoEnglishCompletionsOrNextWords` /
 │   `standInTurnsOffAutocorrectButKeepsYourTextReplacements` in StandInTypingTest.kt; not
 │   tried on a device.
+├── Keyboard > Keyboard layout > Русский -> ЙЦУКЕН, including ъ and ь, with ё/Ё on a held
+│   е/Е. When the layout follows dictation, choosing Русский or resolving Automatic to
+│   Russian also shows these keys. A pin takes precedence over the spoken language. The
+│   Russian layout keeps typed text and the literal chip. Built-in word completions,
+│   next words, autocorrection and swipe typing are off. Pin English to use its
+│   typing model with spoken Russian. Checks: KeyboardPageTest, InsertionTest and
+│   StandInTypingTest (rows, letter holds, language resolution and literal Cyrillic typing).
+│   On a disposable ARM64 Android 16 emulator, the IME entered "Съешь ещё. ЁЖ" into a
+│   separate editor. English keys and suggestions remained available when pinned during Russian dictation.
+├── Hex RU personal APK with a private vocabulary file -> the saved terms default to on under
+│   Dictation > Custom vocabulary. Edits or an explicit off setting take precedence over defaults.
+│   After two typed letters, the English and Russian strips offer matching terms for tap insertion.
+│   Names keep their spelling. Lowercase Russian words follow Shift and Caps Lock, and bundled
+│   words keep sentence case in dictation. StandInTypingTest and InsertionTest cover these cases.
+│   A disposable ARM64 Android 16 emulator inserted a private term from each layout into a
+│   separate editor with its saved case.
 ├── Keyboard > Suggest swear words (off) -> opt in to profanity; listed slurs never offered
 ├── Type a listed word in full -> keep its spelling on space or tap its literal chip
 ├── An Italian or French elision typed without its apostrophe -> while Autocorrect is on, in a word
@@ -3296,7 +3312,7 @@ Android keyboard -> English, Spanish, German, Bokmål, French and Italian typing
 │   on a GitHub-hosted runner (https://github.com/anomalyco/hex/actions/runs/45268305325, the
 │   latest observed verification); the repo has no Android CI.
 ├── Labs > Keyboard > Number row (off) -> 1 2 3 4 5 6 7 8 9 0 above the letter rows on
-│   every layout (en, es, nb, de, fr, it), typed like normal keys. The first letter row's
+│   every layout (en, es, nb, de, fr, it, ru), typed like normal keys. The first letter row's
 │   corner digits and digit-first hold are hidden while it shows; accents on hold stay, and
 │   the Symbols on letter keys hints and holds still work: row 1's first ten letters show a
 │   symbol instead of the digit, Gboard's such as q for % and p for }, or its own home- or

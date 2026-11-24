@@ -79,6 +79,38 @@ val requirePreviewKey by tasks.registering {
 val previewBuild = providers.gradleProperty("hexPreviewBuild").orNull?.toInt() ?: 1
 val previewChannel = providers.gradleProperty("hexPreviewChannel").orNull
     ?: "https://raw.githubusercontent.com/anomalyco/hex/android-preview/latest.json"
+val personalBuild = providers.gradleProperty("hexPersonalBuild").orNull?.toInt() ?: 2412
+val personalProperties = File(System.getProperty("user.home"), ".config/hex-android-ru/keystore.properties")
+abstract class PreparePersonalVocabulary : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val source: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun prepare() {
+        val input = source.singleFile
+        val asset = outputDirectory.file(input.name).get().asFile
+        if (input.isFile) input.copyTo(asset, overwrite = true)
+        else Files.deleteIfExists(asset.toPath())
+    }
+}
+val preparePersonalVocabulary by tasks.registering(PreparePersonalVocabulary::class) {
+    source.from(File(System.getProperty("user.home"), ".config/hex-ru/personal-assets/hex-personal-words.txt"))
+}
+val personalKey = Properties().apply {
+    if (personalProperties.isFile) personalProperties.inputStream().use(::load)
+}
+val requirePersonalKey by tasks.registering {
+    doLast {
+        check(listOf("storeFile", "storePassword", "keyAlias", "keyPassword").all { !personalKey.getProperty(it).isNullOrBlank() } &&
+            personalProperties.parentFile.resolve(personalKey.getProperty("storeFile")).isFile) {
+            "Hex RU packaging requires a private signing key and keystore.properties under ~/.config/hex-android-ru."
+        }
+    }
+}
 // Send feedback's Bellhop report key (gradle.properties, or -PhexFeedbackKey=…): publishable, it can only send feedback
 // to Hex's inbox, and kept out of the source so it can be rotated. Empty: the build has no Send feedback.
 val feedbackKey = providers.gradleProperty("hexFeedbackKey").orNull?.trim().orEmpty()
@@ -98,6 +130,7 @@ android {
         buildConfigField("String", "FEEDBACK_KEY", "\"$feedbackKey\"")
         // Labs › Diagnostics: Hex Preview and debug builds (below), never the Play release.
         buildConfigField("boolean", "DIAGNOSTICS", "false")
+        buildConfigField("boolean", "PERSONAL_VOCABULARY", "false")
         ndk { abiFilters += "arm64-v8a" }
         externalNativeBuild.cmake {
             arguments += listOf("-DANDROID_STL=c++_static", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")
@@ -121,6 +154,12 @@ android {
             keyAlias = previewKey.getProperty("keyAlias")
             keyPassword = previewKey.getProperty("keyPassword")
         }
+        create("personal") {
+            storeFile = personalKey.getProperty("storeFile")?.let { personalProperties.parentFile.resolve(it) }
+            storePassword = personalKey.getProperty("storePassword")
+            keyAlias = personalKey.getProperty("keyAlias")
+            keyPassword = personalKey.getProperty("keyPassword")
+        }
     }
     buildTypes {
         debug { buildConfigField("boolean", "DIAGNOSTICS", "true") }
@@ -142,12 +181,25 @@ android {
             resValue("string", "update_channel", previewChannel)
             buildConfigField("boolean", "DIAGNOSTICS", "true")
         }
+        // Hex RU keeps Preview's diagnostics and uses the no-op updater from src/play.
+        create("personal") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".preview.ru"
+            signingConfig = signingConfigs.getByName("personal")
+            matchingFallbacks += "release"
+            buildConfigField("boolean", "DIAGNOSTICS", "true")
+            buildConfigField("boolean", "PERSONAL_VOCABULARY", "true")
+            buildConfigField("String", "FEEDBACK_KEY", "\"\"")
+        }
     }
     sourceSets["debug"].java.srcDir("src/play/java")
     sourceSets["release"].java.srcDir("src/play/java")
+    sourceSets["personal"].java.srcDir("src/play/java")
+    sourceSets["personal"].manifest.srcFile("src/release/AndroidManifest.xml")
     // Labs › Diagnostics' speed-test clip ships only where the page does.
     sourceSets["debug"].assets.srcDir("src/diagnostics/assets")
     sourceSets["preview"].assets.srcDir("src/diagnostics/assets")
+    sourceSets["personal"].assets.srcDir("src/diagnostics/assets")
     packaging.resources.excludes += "DebugProbesKt.bin"
     buildFeatures { compose = true; buildConfig = true }
     androidResources { noCompress += listOf("bin", "hextm", "valid", "capitals") }
@@ -165,12 +217,18 @@ androidComponents {
         val name = "${android.defaultConfig.versionName}-preview.$previewBuild"
         variant.outputs.forEach { it.versionCode.set(previewBuild); it.versionName.set(name) }
     }
+    onVariants(selector().withBuildType("personal")) { variant ->
+        val name = "${android.defaultConfig.versionName}-preview.$personalBuild"
+        variant.outputs.forEach { it.versionCode.set(personalBuild); it.versionName.set(name) }
+        variant.sources.assets?.addGeneratedSourceDirectory(preparePersonalVocabulary, PreparePersonalVocabulary::outputDirectory)
+    }
 }
 
 kotlin.compilerOptions { jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17) }
 tasks.matching { it.name in setOf("packageRelease", "packageReleaseBundle", "signReleaseBundle", "bundleRelease", "assembleRelease") }
     .configureEach { dependsOn(requireUploadKey) }
 tasks.matching { it.name in setOf("packagePreview", "assemblePreview") }.configureEach { dependsOn(requirePreviewKey) }
+tasks.matching { it.name in setOf("packagePersonal", "assemblePersonal") }.configureEach { dependsOn(requirePersonalKey) }
 // Unmodified InterVariable.ttf from rsms/inter v4.1, stored locally for offline builds.
 val verifyInter by tasks.registering {
     val font = file("src/main/res/font/inter_variable.ttf")
@@ -201,7 +259,7 @@ tasks.named("preBuild").configure { dependsOn(prepareSpeechModel, verifyInter, v
 // Every native library the APK ships, Hex's own and AndroidX's prebuilt ones, gets the check Hex's get when they are built
 // (src/main/cpp/check-imports.cmake): no call that starts, replaces or traces a process or loads a shared object, and
 // nothing exported but JNI entry points.
-tasks.matching { it.name.matches(Regex("merge(Debug|Release|Preview)NativeLibs")) }.configureEach {
+tasks.matching { it.name.matches(Regex("merge(Debug|Release|Preview|Personal)NativeLibs")) }.configureEach {
     val script = file("src/main/cpp/check-imports.cmake")
     val cmake = android.sdkDirectory.resolve("cmake/3.22.1/bin/cmake")
     val nm = android.ndkDirectory.resolve("toolchains/llvm/prebuilt").listFiles().orEmpty().map { it.resolve("bin/llvm-nm") }

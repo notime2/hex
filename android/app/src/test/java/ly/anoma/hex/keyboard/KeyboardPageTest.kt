@@ -19,6 +19,27 @@ class KeyboardPageTest {
         assertNull(page(numberRow = false).digits)
     }
 
+    @Test fun russianRowsAndLongPressCoverTheAlphabet() {
+        val russian = page(numberRow = false, language = Spoken.Russian)
+        assertEquals(listOf("йцукенгшщзхъ", "фывапролджэ", "ячсмитьбю"), russian.lines)
+        val held = russian.lines.flatMapIndexed { row, letters ->
+            letters.flatMapIndexed { index, letter ->
+                LetterFeedback.holds(letter, "ru", russian.hint(row, index))
+            }
+        }
+        val alphabet = russian.lines.joinToString("") + held.filter { it.single().isLetter() }.joinToString("")
+        assertEquals(33, alphabet.length)
+        assertEquals("абвгдеёжзийклмнопрстуфхцчшщъыьэюя".toSet(), alphabet.toSet())
+        assertEquals(1.5f, KeyboardMetrics.sideWidth(russian, russian.lines), 0f)
+    }
+
+    @Test fun russianEHoldsYoBeforeItsDigitInEitherCase() {
+        assertEquals(listOf("ё", "5"), LetterFeedback.holds('е', "ru", '5'))
+        assertEquals(listOf("Ё", "5"), LetterFeedback.holds('Е', "ru", '5'))
+        assertEquals(listOf("ё"), LetterFeedback.holds('е', "ru", null))
+        assertEquals(listOf("Ё"), LetterFeedback.holds('Е', "ru", null))
+    }
+
     @Test fun theNumberRowNeverChangesTheLettersOrTheSymbolPages() {
         assertEquals(KeyboardLetters.rows("en"), page(numberRow = true).lines)
         assertNull(page(numberRow = true, symbols = true).digits)

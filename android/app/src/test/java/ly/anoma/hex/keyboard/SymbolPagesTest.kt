@@ -64,14 +64,14 @@ class SymbolPagesTest {
         assertEquals(">", page(more = true).periodText)
     }
 
-    @Test fun everyPrintableAsciiCharacterTypesOnEveryLayout() {
+    @Test fun asciiSymbolsAndDigitsTypeOnEveryLayoutAndLatinLettersOnLatinLayouts() {
         val ascii = ('!'..'~').toList()
         for (language in Spoken.entries) for (currency in currencies) {
             val typed = LinkedHashSet<Char>()
             typed += letters(language)
             typed += symbols(page(language, more = false, currency = currency))
             typed += symbols(page(language, more = true, currency = currency))
-            val missing = ascii.filter { it !in typed }
+            val missing = ascii.filter { it !in typed && (language != Spoken.Russian || !it.isLetter()) }
             assertTrue("${language.code} with ${currency ?: '$'} cannot type $missing", missing.isEmpty())
         }
     }

@@ -28,6 +28,7 @@ import android.widget.TextView
 import androidx.core.view.children
 import androidx.emoji2.emojipicker.EmojiPickerView
 import ly.anoma.hex.R
+import ly.anoma.hex.speech.Spoken
 import ly.anoma.hex.typing.KeyGrid
 import ly.anoma.hex.typing.KeyPoint
 import ly.anoma.hex.typing.KeyRect
@@ -329,10 +330,10 @@ internal class KeyPlaneView(context: Context, private val ime: HexKeyboard, priv
                 // wherever a layout draws their letters. A local currency takes $'s place on d.
                 val symbol = if (letterHolds) LetterFeedback.letterSymbol(c, topRow = index == 0,
                     currency = currency) else null
-                k.hint(digit?.toString() ?: symbol?.toString())
                 fun holds() = if (symbols) LetterFeedback.symbolHolds(c, currency)
                     else LetterFeedback.holds(cased(c).single(), language.layoutCode, digit, letterHolds,
                         topRow = index == 0, currency = currency)
+                k.hint(if (!symbols && language == Spoken.Russian && c == 'е') "ё" else digit?.toString() ?: symbol?.toString())
                 if (holds().isNotEmpty()) {
                     k.setOnLongClickListener { host.openAccents(holds(), it); true }
                     k.longClickLabel = context.getString(R.string.keyboard_more_characters)

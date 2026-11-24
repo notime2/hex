@@ -88,8 +88,7 @@ class HexKeyboard : InputMethodService() {
     /** The options the dictation in flight started with: its language decides mid-sentence case. */
     internal val feedback by lazy { TypingPreferences(this) }
     internal val layoutLanguage get() = feedback.layout ?: preferences.spoken.layout ?: Spoken.English
-    /** The keys' typing model, or none when the layout is only English's stand-in for a dictation language
-     * without one: English keys and accents, but no English next words or autocorrections for its text. */
+    /** The keys' typing model, or null for a layout without a bundled model. */
     internal val typingLanguage get() = typingLayout(feedback.layout, preferences.spoken)?.layoutCode
     // Android's personal dictionary is read off the main thread, and again whenever it changes.
     private val words = Executors.newSingleThreadExecutor { Thread(it, "Hex personal words") }
@@ -100,7 +99,7 @@ class HexKeyboard : InputMethodService() {
         KeyboardEngine(InputConnectionTarget(this), feedback, { layoutLanguage }, { typingLanguage },
             { SpatialDecoder(TypingModel.asset(assets, it)) },
             readPersonal = { PersonalWords.read(contentResolver, it) }, background = words,
-            emoji = EmojiWords(assets, words))
+            emoji = EmojiWords(assets, words), vocabulary = { preferences.keyboardVocabulary })
     }
     private val typingChanged = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == TypingPreferences.SUGGEST_SWEAR_WORDS) engine.swearWordsChanged()

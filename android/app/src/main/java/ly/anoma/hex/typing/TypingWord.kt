@@ -1,5 +1,7 @@
 package ly.anoma.hex.typing
 
+import ly.anoma.hex.speech.VocabularySpelling
+
 /** What a space or closing mark does to the text before the cursor: [original], which that text
  * ends with, becomes [replacement]; the space or mark goes in after it. [original] may hold the
  * word before too ("well se" ... "well see" -> "we'll see"). */
@@ -42,7 +44,7 @@ internal data class Suggestion(val text: String, val kind: Kind) {
 
 /** The current word, and the one a space just finished while the next is typed. Both the keyboard
  * and replay feed the real tap at each letter. */
-internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean) {
+internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean, val vocabulary: List<String> = emptyList()) {
     private val model = decoder.model
     var token = ""
         private set
@@ -69,8 +71,8 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean) {
      * capital you didn't type: "i" stays "i", "monday" "monday", German nouns as typed, the strip and its
      * predictions lowercase; your own words and shortcuts keep theirs. */
     var addsCapitals = true
-    /** English's word list standing in for a dictation language with no layout or typing model of its own
-     * (Português, Nederlands, Polski, Русский): the keys' geometry and your personal dictionary still work,
+    /** English's word list standing in for a language with no typing model of its own
+     * (Português, Nederlands, Polski, Русский): literal typing and personal shortcuts still work,
      * but the model's completions, next words, autocorrection, tap correction and emoji keywords are English's
      * and stay off. */
     var standIn = false
@@ -185,7 +187,13 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean) {
         val fix = if (autocorrect && !standIn) replacement() else null
         val pool = ArrayList<String>(4)
         val lower = lookup(token.lowercase())
-        val showTyped = standIn || fix != null || blocked(token) || knows(lower)
+        val terms = if (token.length >= 2) vocabulary.asSequence()
+            .filter { lookup(it).startsWith(lower, ignoreCase = true) }
+            .map { if (VocabularySpelling.isLowercaseRussianWord(it)) matchCase(token, it) else it }
+            .filter { it != token }
+            .take(Suggestion.SLOTS)
+            .toList() else emptyList()
+        val showTyped = standIn || fix != null || terms.isNotEmpty() || blocked(token) || knows(lower)
         val size = if (showTyped) 2 else 3
         val lowered = !addsCapitals && token.none { it.isUpperCase() }
         fun add(word: String) {
@@ -194,6 +202,11 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean) {
                 !blocked(s)) pool.add(s)
         }
         fix?.let { pool.add(it) }
+        // Keep the stored case of personal terms, including when only its capitalization differs.
+        for (term in terms) {
+            if (pool.size == size) break
+            if (pool.none { it.equals(term, ignoreCase = true) }) pool.add(term)
+        }
         if (autocorrect && fix == null && !standIn && model.language == "en") suggestOnly[lower]?.let { add(matchCase(token, it)) }
         // An elision typed without its apostrophe ("laltro", "dellanno"): Italian and French write the
         // article against the word, so the strip offers the two joined up, as English's contractions are.
@@ -227,7 +240,7 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean) {
     private fun shown(word: String) = matchCase(token, if (token.firstOrNull()?.isUpperCase() == true) word else displayed(word))
     fun letter(text: String, x: Double, y: Double, grid: KeyGrid) {
         token += text; decision = null
-        if (spatial && !literalOnly && taps.size < MAX_LENGTH) taps.add(decoder.score(grid, x, y))
+        if (spatial && !standIn && !literalOnly && taps.size < MAX_LENGTH) taps.add(decoder.score(grid, x, y))
     }
     fun explicit(text: String) {
         token += text; taps.clear(); decision = null; literalOnly = true
@@ -308,7 +321,7 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean) {
     private fun withCapitals(): String? {
         // A stand-in changes nothing on space or a mark: English's fixes and your own spellings alike wait
         // for a layout or a language with a model. Your shortcuts go in through textReplacement before it.
-        if (standIn || token.isEmpty()) return null
+        if (standIn || token.isEmpty() || vocabulary.any { it.equals(token, ignoreCase = true) }) return null
         val personal = decoder.personal
         personal?.shortcut(lookup(token))?.let { return it }
         // Your own word: never corrected into another, and spelled your way ("github" -> "GitHub").
@@ -382,7 +395,8 @@ internal class TypingWord(val decoder: SpatialDecoder, val spatial: Boolean) {
                commit: (String) -> String = { it }): Correction? {
         val word = finished
         finished = null; pending = null
-        if (standIn || token.isEmpty() || (ending == '.' && token.lowercase() in abbreviations)) return null
+        if (standIn || token.isEmpty() || vocabulary.any { it.equals(token, ignoreCase = true) } ||
+            (ending == '.' && token.lowercase() in abbreviations)) return null
         var result: Correction? = null
         if (word?.taps != null && word.space != null && spatial && !literalOnly && taps.size == token.length &&
             listOf(word.typed, token).none { it.lowercase() in shorthand || decoder.personal?.owns(it) == true }) {

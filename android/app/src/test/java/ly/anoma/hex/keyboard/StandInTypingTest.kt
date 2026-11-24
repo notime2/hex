@@ -16,9 +16,9 @@ import ly.anoma.hex.typing.TypingWord
 /** English's word list standing in for a dictation language with no model of its own (Português, Nederlands,
  * Polski, Русский): your personal dictionary and its replacements stay, English's words do not. */
 class StandInTypingTest {
-    private fun word(standIn: Boolean = false): TypingWord {
+    private fun word(standIn: Boolean = false, vocabulary: List<String> = emptyList()): TypingWord {
         val model = TypingModel.file(File("src/main/assets/typing/en.hextm"), "en")
-        return TypingWord(SpatialDecoder(model), spatial = true).also {
+        return TypingWord(SpatialDecoder(model), spatial = true, vocabulary = vocabulary).also {
             it.decoder.personal = PersonalWords(model, listOf("Zorbex"), mapOf("myem" to "my@email.com"))
             it.standIn = standIn
         }
@@ -71,5 +71,54 @@ class StandInTypingTest {
         assertNull(standIn.replacement())
         // Your text replacement still goes in, whatever the language dictates.
         assertEquals("my@email.com", standIn.textReplacement("myem")?.replacement)
+    }
+
+    @Test fun cyrillicKeysKeepTheTypedWordWithoutEnglishAssistance() {
+        val cyrillicGrid = KeyGrid(KeyboardLetters.rows("ru").flatMapIndexed { row, letters ->
+            letters.mapIndexed { index, letter -> letter to KeyPoint(index * 34.0, row * 56.0) }
+        }.toMap(), 34.0, 56.0)
+        val standIn = word(standIn = true)
+        for (letter in "Подъём") {
+            if (letter == 'ё') standIn.explicit(letter.toString())
+            else {
+                val point = cyrillicGrid.centres.getValue(letter.lowercaseChar())
+                standIn.letter(letter.toString(), point.x, point.y, cyrillicGrid)
+            }
+        }
+        assertEquals(listOf(Suggestion("Подъём", Suggestion.Kind.Typed)), standIn.strip())
+        assertNull(standIn.finish(' '))
+        assertNull(standIn.finish('.'))
+        assertTrue(standIn.predictions("Подъём ").isEmpty())
+    }
+
+    @Test fun russianPrivateVocabularyCompletesWithoutFixingThePrefix() {
+        val standIn = word(standIn = true, vocabulary = listOf("ЗорбоЛист", "TypoBloom"))
+        standIn.explicit("зо")
+        assertEquals(listOf(Suggestion("зо", Suggestion.Kind.Typed), Suggestion("ЗорбоЛист", Suggestion.Kind.Word)),
+            standIn.strip())
+        assertNull(standIn.finish(' '))
+        assertTrue(standIn.predictions("зо ").isEmpty())
+    }
+
+    @Test fun englishPrivateVocabularyKeepsProductCapitalization() {
+        val english = word(vocabulary = listOf("iTovex Lab")).also { it.addsCapitals = false }
+        english.explicit("It")
+        assertTrue(english.strip().contains(Suggestion("iTovex Lab", Suggestion.Kind.Word)))
+        english.restored("itovex", "")
+        assertTrue(english.strip().contains(Suggestion("iTovex Lab", Suggestion.Kind.Word)))
+        val product = word(vocabulary = listOf("TypoBloom"))
+        product.explicit("typobloom")
+        assertEquals(Suggestion("TypoBloom", Suggestion.Kind.Word), product.strip()[1])
+        assertNull(product.finish(' '))
+    }
+
+    @Test fun ordinaryRussianCompletionsKeepTheCaseThatWasTyped() {
+        val word = word(standIn = true, vocabulary = listOf("берёза"))
+        for ((prefix, expected) in listOf("бе" to "берёза", "Бе" to "Берёза", "БЕ" to "БЕРЁЗА")) {
+            word.restored(prefix, "")
+            assertTrue(word.strip().contains(Suggestion(expected, Suggestion.Kind.Word)))
+        }
+        word.restored("Берёза", "")
+        assertEquals(listOf(Suggestion("Берёза", Suggestion.Kind.Typed)), word.strip())
     }
 }

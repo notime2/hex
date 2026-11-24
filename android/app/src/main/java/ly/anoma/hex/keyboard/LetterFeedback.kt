@@ -113,6 +113,7 @@ internal class LetterFeedback(private val host: ViewGroup) {
         fun options(c: Char, language: String): List<String> {
             val lower = c.lowercaseChar()
             val raw = when (language) {
+                "ru" -> if (lower == 'е') "ё" else null
                 "es" -> when (lower) {
                     'a' -> "aáàäâãåąæāª"; 'e' -> "eéèëêęėē"; 'i' -> "iíïìîįī"; 'o' -> "oóòöôõøœōº"; 'u' -> "uúüùûū"; else -> accents[lower]
                 }
@@ -147,6 +148,8 @@ internal class LetterFeedback(private val host: ViewGroup) {
                   topRow: Boolean = false, currency: Char? = null): List<String> {
             val accents = options(c, language)
             val first = digit?.toString() ?: (if (symbolsOnLetters) letterSymbol(c, topRow, currency)?.toString() else null)
+            // A held е types ё by default. Its digit is still available in the same popup.
+            if (language == "ru") return accents + listOfNotNull(first)
             return if (first == null) accents else listOf(first) + accents
         }
 
